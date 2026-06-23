@@ -42,6 +42,8 @@
   - [Printing](#printing)
   - [Power Management](#power-management)
 - [How to Customize LXQt Desktop](#how-to-customize-lxqt-desktop)
+- [Low-Level Dependencies & Libraries](#low-level-dependencies--libraries)
+- [Building Custom GUI Apps](#building-custom-gui-apps)
 - [Distributions](#distributions)
 - [Resources & Tutorials](#resources--tutorials)
 - [Community](#community)
@@ -557,6 +559,561 @@ Since you will likely run GTK apps (like Firefox or GIMP) inside LXQt, you need 
 The panel itself (`lxqt-panel`) is themed using standard CSS-like syntax called QSS (Qt Style Sheets).
 - **Location:** `~/.config/lxqt/lxqt-panel.qss`
 - **Why?** If you want to change the border radius of the start menu, the padding of the taskbar buttons, or the background color of the panel, you do it by editing the active QSS file.
+
+## Low-Level Dependencies & Libraries
+
+Every application recommended in this list ultimately depends on a set of core C/C++ shared libraries. Understanding these helps with dependency troubleshooting, system trimming, and manual installs.
+
+### GTK Stack (libgtk, libglib, libcairo, etc.)
+
+All GTK-based apps (GIMP, Inkscape, pavucontrol, Blueman, Sakura, Terminator, etc.) share this dependency chain:
+
+| Library | Role | Typical consumers |
+|---|---|---|
+| `libglib-2.0` | Core data types, event loop, threading | Every GTK app |
+| `libgobject-2.0` | GObject type/object system | Every GTK app |
+| `libgio-2.0` | VFS, D-Bus, file monitoring | Every GTK app |
+| `libgtk-3` / `libgtk-4` | Widget toolkit | Every GTK app |
+| `libgdk-3` / `libgdk-4` | Windowing abstraction (X11/Wayland) | Every GTK app |
+| `libgdk_pixbuf-2.0` | Image loading (PNG, JPEG, etc.) | GIMP, GPicView, lxappearance |
+| `libpango-1.0` / `libpangocairo-1.0` | Text layout + Cairo rendering | Every GTK app |
+| `libcairo` | 2D vector rendering | Every GTK app, picom |
+| `libatk-1.0` / `libatk-bridge` | Accessibility | nwg-panel, nwg-launchers |
+| `libharfbuzz` | Text shaping (ICU shaper) | Every GTK app |
+| `libfreetype` / `libfontconfig` | Font loading & matching | Every GTK app |
+| `libvte` (libvte-2.91) | Terminal emulator widget | Sakura, Terminator |
+| `librsvg-2` | SVG rendering | lxappearance, Oomox |
+| `libpangoft2` | FreeType backend for Pango | Every GTK app |
+| `libpeas-1.0` | Plugin system (GObject-based) | Various GTK apps |
+| `libjson-glib-1.0` | JSON parsing | nwg-launchers, azote |
+| `libsoup-2.4` / `libsoup-3.0` | glib-based HTTP client | GTK apps needing HTTP |
+| `libgudev-1.0` | udev device enumeration | Blueman, system-config-printer |
+| `libnotify` | Desktop notification bubbles | notify-send, various GTK apps |
+
+These all sit on top of `libx11`/`libxcb` (X11) or `libwayland-client` (Wayland).
+
+### Qt Stack (libQt5, libQt6, liblxqt, etc.)
+
+LXQt is a Qt-first desktop. All lxqt-* modules and recommended Qt apps (qBittorrent, FeatherPad, Flameshot, Strawberry, etc.) link these:
+
+| Library | Role | Typical consumers |
+|---|---|---|
+| `libQt5Core` / `libQt6Core` | Core (QObject, containers, threads, JSON, XML) | Every Qt app |
+| `libQt5Gui` / `libQt6Gui` | Windowing, images, fonts, text layout | Every Qt app |
+| `libQt5Widgets` / `libQt6Widgets` | Widget toolkit | Most Qt apps |
+| `libQt5Network` / `libQt6Network` | TCP/HTTP/DNS | qBittorrent, Trojità, qutebrowser |
+| `libQt5DBus` / `libQt6DBus` | D-Bus IPC binding | lxqt-panel, nm-tray, connman-qt |
+| `libQt5Xml` / `libQt6Xml` | XML parsing | Various Qt apps |
+| `libQt5Svg` / `libQt6Svg` | SVG rendering | Kvantum themes, lximage-qt |
+| `libQt5Sql` / `libQt6Sql` | SQL database (SQLite, PostgreSQL) | Cantata, Strawberry |
+| `libQt5Concurrent` / `libQt6Concurrent` | Parallel map/reduce | digiKam, Krita |
+| `libQt5Multimedia` / `libQt6Multimedia` | Audio/video playback | Elisa, qmmp |
+| `libQt5WebEngine` / `libQt6WebEngine` | Chromium-based browser engine | qutebrowser, Falkon, Angelfish |
+| `libQt5WebEngineWidgets` | WebEngine + Widgets glue | qutebrowser, Falkon |
+| `libQt5WaylandClient` / `libQt6WaylandClient` | Wayland platform plugin | All Wayland Qt apps |
+| `libQt5XcbQpa` / `libQt6XcbQpa` | X11 platform plugin | All X11 Qt apps |
+| `libQt5Sensors` / `libQt6Sensors` | Hardware sensor readings | Various |
+| `libQt5Bluetooth` / `libQt6Bluetooth` | Bluetooth stack (Qt) | Various |
+| `libQt5Positioning` / `libQt6Positioning` | Geolocation | Various |
+| `libQt5Qml` / `libQt6Qml` | QML engine | Some Qt Quick apps |
+
+**LXQt-specific Qt libraries:**
+
+| Library | Role | Consumers |
+|---|---|---|
+| `liblxqt` | LXQt base (config, logging, window system) | All `lxqt-*` modules |
+| `liblxqt-globalkeys` | Global keyboard shortcuts | lxqt-panel, lxqt-runner |
+| `libqtermwidget5` | Terminal widget for embedding | QTerminal, QTermWidget |
+| `libfm-qt` | Qt binding of libfm (file management) | pcmanfm-qt |
+| `libqtxdg` | XDG desktop entry + MIME handling | pcmanfm-qt, lxqt-archiver |
+| `libpolkit-qt5` / `libpolkit-qt6` | Polkit Qt binding | lxqt-policykit |
+| `libstatgrab` | System statistics | lxqt-panel sensors plugin |
+| `libsensors` (lm-sensors) | Hardware sensor access | lxqt-panel sensors plugin |
+
+**KDE Frameworks libraries** — used by KDE-origin apps that run on LXQt (Krita, digiKam, Ark, Okular):
+
+| Library | Role | Consumers |
+|---|---|---|
+| `libKF5Config` / `libKF6Config` | KConfig (INI/KConfig XT) | Krita, digiKam, Ark, Okular |
+| `libKF5I18n` / `libKF6I18n` | i18n/translation framework | KDE apps |
+| `libKF5WindowSystem` / `libKF6WindowSystem` | NETWM/EWMH abstraction | KWin panel backend |
+| `libKF5Notifications` / `libKF6Notifications` | KNotification daemon | print-manager, Spectacle |
+| `libKF5Solid` / `libKF6Solid` | Hardware discovery | Ark, print-manager, KDE apps |
+| `libKF5SyntaxHighlighting` | Syntax highlighting engine | FeatherPad (optional), KDE apps |
+| `libKDecoration2` | KWin window decoration API | KWin Aurorae themes |
+
+### Windowing & Display System
+
+The lowest graphics/windowing libraries that everything ultimately calls:
+
+| Library | Role |
+|---|---|
+| `libwayland-client` / `libwayland-server` | Core Wayland protocol (event loop, shm, registry) |
+| `libwayland-cursor` / `libwayland-egl` | Wayland cursor images + EGL surface integration |
+| `libwlroots` | Compositor toolkit: wlr_output, wlr_input, wlr_scene, wlr_xdg_shell, etc. (used by Labwc, Sway, Wayfire, Hyprland, river, dwl) |
+| `libdrm` | Direct Rendering Manager – KMS modesetting, buffer allocation |
+| `libgbm` | Generic Buffer Manager – buffer import/export with mesa |
+| `libinput` | Input device handling (evdev, libinput events, gestures) |
+| `libxkbcommon` | Keyboard layout / XKB state machine |
+| `libseat` | Seat management (seatd or logind) |
+| `libdisplay-info` | EDID parsing for monitor names, physical size, HDR metadata |
+| `libliftoff` | Plane-optimized KMS compositing (atomic page-flip) |
+| `libx11` / `libxcb` | X11 protocol C bindings |
+| `libxext` / `libxfixes` / `libxdamage` | X11 extensions used by compositors (picom) |
+| `libxrender` / `libxcomposite` | X11 rendering + composite redirection |
+| `libxrandr` | X11 Resize and Rotate (monitor config) |
+| `libxss` / `libXScrnSaver` | X11 screen saver control |
+| `libxpresent` | X11 Present extension (tear-free) |
+| `libxcursor` / `libxft` | X11 cursor + font rendering |
+| `libxinerama` | Multi-monitor (legacy) |
+
+### Graphics / GPU
+
+| Library | Role |
+|---|---|
+| `libEGL` (libEGL_mesa) | EGL native platform interface (Wayland compositors, GPU rendering) |
+| `libGLESv2` / `libGL` | OpenGL ES 2.0 / full OpenGL |
+| `libgbm` (already listed) | GBM buffer allocation (EGL native platform for KMS) |
+| `libdrm_<driver>` (libdrm_intel, libdrm_nouveau, libdrm_amdgpu, libdrm_radeon) | DRM driver helpers |
+| `libva` / `libvdpau` | VA-API / VDPAU hardware video acceleration (H.264/H.265/AV1) |
+| `libplacebo` | GPU-accelerated video processing (mpv Vulkan/OpenGL) |
+| `libvulkan` (libvulkan.so.1) | Vulkan compute/graphics (Hyprland, modern mpv) |
+| `libOpenCL` | OpenCL compute (some filter pipelines) |
+| `libcairo` (also GTK dep) | 2D vector rendering (picom compositing, GTK) |
+| `libpixman-1` | Pixmap manipulation (software compositing fallback) |
+| `libxshmfence` | Shared-memory fences for X11/GL sync |
+| `libepoxy` | OpenGL function pointer loading (used by GTK 4 internally) |
+| `libshaderc` | Vulkan GLSL/HLSL shader compilation to SPIR-V |
+| `libglslang` | GLSL/HLSL frontend for shader compilation |
+| `libspirv-tools` | SPIR-V binary processing, optimisation, validation |
+| `libblend2d` | JIT-compiled 2D vector rendering engine (CPU, SIMD) |
+| `libnanovg` | Small anti-aliased 2D vector drawing on OpenGL (used by GUI widgets) |
+| `libskia` | Full 2D graphics library (Chrome, Flutter, Firefox) — software + GPU backends |
+| `libgraphene` | Geometric algebra types for graphics (SIMD-optimised vectors, matrices) |
+| `libpixman-1` | Software pixel compositing and manipulation |
+| `libmtl` | Mesa thread-command submission for multi-threaded GL |
+| `libvulkan-intel` / `libvulkan-radeon` / `libvulkan-broadcom` | Vulkan ICD (installable client driver) per GPU vendor |
+| `libVkLayer-*` | Vulkan validation layers for debugging custom GUI rendering |
+
+### Image Loading, Encoding & Processing
+
+For apps that display, edit, or convert images:
+
+| Library | Format / Role | Consumers |
+|---|---|---|
+| `libjpeg-turbo` | JPEG encode/decode (SIMD-accelerated) | GIMP, digiKam, lximage-qt |
+| `libpng16` | PNG read/write | Every GUI app with images |
+| `libwebp` | WebP encode/decode (lossy + lossless + alpha) | qutebrowser, browsers |
+| `libavif` | AVIF image format (HEIF-based, royalty-free) | Modern imaging apps |
+| `libheif` | HEIF/HEIC photo container (Apple, camera RAW) | digiKam, gThumb |
+| `libtiff-5` / `libtiffxx` | TIFF image read/write | GIMP, digiKam, scanners |
+| `libraw` | RAW camera image decoding (CR2, NEF, ARW, DNG, etc.) | digiKam, Darktable, RawTherapee |
+| `libjxr` | JPEG XR (HDR photo format, Windows legacy) | Various |
+| `libjxl` | JPEG XL (next-gen, lossless recompression of JPEG) | Progressive image viewers |
+| `libgexiv2` | EXIF/XMP/IPTC metadata read/write | GIMP, digiKam, lximage-qt |
+| `libiptcdata` | IPTC metadata (news photo standard) | Photo management apps |
+| `liblcms2` | LittleCMS2 — colour profile management (ICC) | GIMP, digiKam, Oomox |
+| `libwmf` | Windows Metafile vector rendering | LibreOffice, Inkscape |
+| `libemf` | Enhanced Metafile rendering | LibreOffice |
+| `librsvg-2` | SVG rendering (Cairo-based) | lxappearance, Oomox, GTK icon themes |
+| `libsixel` | SIXEL graphics encoding (terminal images) | img2sixel, terminal emulators |
+| `libquirc` | QR code decoding (camera/photo QR readers) | Various |
+| `libzbar` | Barcode/QR reading (supports many symbologies) | Various scanning apps |
+| `libfreeimage` | Multi-format image loading (convenience wrapper) | Various apps |
+| `libexiv2` | C++ EXIF/IPTC/XMP library (C++ API, used by Qt apps) | digiKam, gThumb |
+
+### Video Playback, Streaming & Camera / Screen Capture
+
+For multimedia players, streaming, screen recorders, and camera apps:
+
+| Library | Role | Consumers |
+|---|---|---|
+| `libavcodec` / `libavformat` / `libavutil` / `libavfilter` / `libavdevice` / `libswscale` / `libswresample` (FFmpeg) | Complete multimedia framework: codecs, muxers, filters, device capture | VLC, mpv, Kdenlive, OBS, Strawberry |
+| `libmpv` | mpv media player client library (scriptable, GPU-accelerated) | Haruna, mpv-qt, baka-mplayer |
+| `libvlc` / `libvlccore` | VLC media engine client library | Elisa (Phonon VLC), VLC Qt GUI |
+| `libgstreamer-1.0` / `libgstbase` / `gst-plugins-*` | Pipeline-based multimedia framework (GNOME stack) | Totem, Rhythmbox, Cheese, Pitivi |
+| `libgstplayer` | High-level GStreamer player API | Simplified video apps |
+| `libgstwebrtc` / `libnice` | WebRTC video/audio streaming (ICE/STUN/TURN) | Video conferencing, PipeWire |
+| `libvpx` | VP8/VP9 video codec (web video, YouTube) | Browsers, FFmpeg |
+| `libx264` / `libx265` | H.264 / H.265 encoding | OBS, Kdenlive, FFmpeg |
+| `libdav1d` | AV1 decoding (very fast, from VideoLAN) | FFmpeg, mpv, browsers |
+| `libaom` | AV1 encoding/decoding (reference implementation) | FFmpeg |
+| `libtheora` / `libogg` | Theora video + Ogg container (legacy, free codec) | Legacy video apps |
+| `libmatroska` | Matroska/WebM container parsing | MKV-aware apps |
+| `libopenmpt` | Module music (MOD/XM/IT/S3M) playback | Audio players |
+| `libopenhevc` | HEVC/H.265 decoder (hardware-accelerated) | Various |
+| `libva` / `libvdpau` | VA-API / VDPAU hardware video decode/encode | mpv, VLC, browsers, FFmpeg |
+| `libplacebo` | GPU-accelerated video rendering + tonemapping (HDR/SDR) | mpv |
+| `libmediainfo` | Media file metadata extraction (codec, bitrate, resolution) | Media info tools |
+| `libchromaprint` | Acoustic fingerprinting (audio identification) | Strawberry, MusicBrainz Picard |
+| `libprojectM` | MilkDrop-style visualisation (audio-reactive OpenGL) | Audio players |
+| `libcamera` | Complex Camera Support Framework (libcamera — modern Linux camera stack) | Camera apps (Cheese, GUVCView) |
+| `libv4l2` / `libv4lconvert` | Video4Linux 2 — webcam/device capture | OBS, Cheese, GUVCView, Kamoso |
+| `libpipewire-0.3` (also audio) | PipeWire screen/camera capture (wlr-screencopy, portal) | OBS, wf-recorder, Helvum |
+| `libwf-recorder` | wlroots screen recording helper | wf-recorder |
+| `libgif` / `libgiflib` | GIF encode/decode (including animations) | peek, various image apps |
+
+### Audio Backend
+
+| Library | Used by |
+|---|---|
+| `libpulse` / `libpulse-simple` / `libpulse-mainloop-glib` | pavucontrol, pasystray, VLC, mpv, Firefox (via PulseAudio) |
+| `libpipewire-0.3` / `libspa-0.2` | PipeWire-aware apps, WirePlumber, Helvum, QPWGraph |
+| `libalsa` / `libasound2` | ALSA-native apps, volume plugin, some drivers |
+| `libsndfile` | Audio file I/O (WAV, FLAC, Ogg) |
+| `libavcodec` / `libavformat` / `libavutil` / `libswresample` (ffmpeg) | Media playback in VLC, mpv, Kdenlive, Strawberry |
+| `libsoxr` | Sample-rate conversion |
+| `libsamplerate` | Sample-rate conversion (legacy) |
+| `libmysofa` | HRTF (head-related transfer function) for spatial audio |
+
+### System Services & IPC
+
+| Library | Used by |
+|---|---|
+| `libdbus-1` | All D-Bus-aware apps (lxqt-*, NetworkManager, PipeWire) |
+| `libsystemd` / `libelogind` | Login/seat management, power management, inhibitor locks |
+| `libpolkit-gobject-1` | PolicyKit C API (polkit XFCE, lxpolkit) |
+| `libpolkit-agent-1` | Polkit agent helpers |
+| `libarchive` | Archive reading (tar, zip, 7z, rar) — lxqt-archiver, Ark |
+| `libcurl` | HTTP/FTP transfers — CLI tools, some Qt apps via QtNetwork |
+| `libxml2` | XML parsing — nearly universal |
+| `libjson-c` / `libjansson` / `libyaml` | JSON/YAML parsing — various CLI tools |
+| `libnl-3` / `libnl-genl-3` | Netlink sockets (NetworkManager, iwd, wpa_supplicant) |
+| `libpcap` | Packet capture (network monitors, Rymd) |
+| `libseccomp` | System call filtering (sandboxing) |
+
+### Theming Engines
+
+| Library | Used by |
+|---|---|
+| `libkvantum` / `libkvantum-qt6` | SVG-based Qt theme engine — all Qt apps when Kvantum is the active style |
+| `libgtk-3` / `libgtk-4` (themes) | GTK theme renderer — `gtk3` package includes theme engines |
+| `libsass` / `libscss` | SASS/SCSS CSS preprocessor (used by Oomox for theme generation) |
+
+### Rich Text, Fonts, i18n & Input Methods
+
+For apps with complex text editing, multi-language support, charts, or formatted output:
+
+| Library | Role | Consumers |
+|---|---|---|
+| `libpango-1.0` / `libpangocairo-1.0` / `libpangoft2` | Text layout, bidirectional, Cairo/FreeType backends | Every GTK app, some Qt (via gtk platform theme) |
+| `libharfbuzz` | OpenType text shaping, ICU integration | Every GTK/Qt app rendering complex scripts |
+| `libraqm` | Complex text layout engine (Arabic, Indic, etc.) | Image editors (GIMP text tool) |
+| `libfribidi` | Unicode bidirectional algorithm (bidi reordering) | Text rendering stack |
+| `libfreetype` / `libfontconfig` | Font file parsing + system font discovery | Every GUI app |
+| `libunistring` | Unicode string operations (case conversion, collation, etc.) | Various text-processing apps |
+| `libicuuc` / `libicui18n` / `libicudata` | ICU — full Unicode/CLDR (collation, break iteration, date/number formatting, timezone) | Qt, LibreOffice, Chromium |
+| `libmenuwidget` / `libpango-graph` | Pango-based graph/cairo widget | Custom dashboards |
+| `libgspell-1` | GTK spellcheck (enchant backend) | Text editors (gedit, mousepad) |
+| `libgtksourceview-4` / `libgtksourceview-5` | Rich source code editor widget (line numbers, syntax highlighting, code folding) | Geany, gedit, Mousepad, Builder |
+| `libKF5SyntaxHighlighting` / `libKSyntaxHighlighting` | KDE syntax highlighting framework (XML-defined, 200+ languages) | FeatherPad, Kate, KWrite, KDevelop |
+| `libpeas-1.0` / `libpeas-gtk` | GObject plugin system for extensible apps | Builder, gedit plugins |
+| `libgedit-*` (libgedit-gtksourceview, libgedit-amtk, libgedit-tepl) | Modern GNOME text editor components (split from gtksourceview) | GNOME Text Editor |
+| `libtepl-6` | GNOME text editor base library (file loading/saving, search, cursor management) | GNOME Text Editor |
+| `libgtkspell` / `libgtkspell3-3` | Legacy GTK spellcheck (obsolete, replaced by gspell) | Older GTK apps |
+| `libenchant-2` | Spell-check engine abstraction (aspell, hunspell, nuspell backends) | gspell, Thunderbird, LibreOffice |
+| `libebook-1.2` / `libedataserver-1.2` | Evolution Data Server — address book, calendar, contacts backend | Evolution, GNOME calendar |
+| `libime` | Fcitx5 input method engine core (Chinese, Japanese, Korean) | Fcitx5 |
+| `libfcitx5-qt` / `libfcitx5-gtk` | Fcitx5 input method platform plugins for Qt/GTK | Fcitx5, all Qt/GTK apps |
+| `libibus-1.0` | IBus input method framework | IBus, all GTK apps via IM module |
+| `libQt5VirtualKeyboard` / `libQt6VirtualKeyboard` | Qt Virtual Keyboard (on-screen, predictive) | Embedded/touch Qt apps |
+| `libxkbcommon` (also display) | XKB keyboard layout compilation + state machine | All Wayland compositors, apps |
+| `libxcb-xkb` | XKB over X11 | X11 apps |
+| `libxcb-keysyms` | X11 keysym lookup | X11 WMs, panels, bars |
+| `libm17n` / `libm17n-flt` | Multi-lingual text engine (CJK, complex scripts) | Legacy internationalised apps |
+| `libcld2` / `libcld3` | Compact Language Detector (2/3) — language identification | Full-text search, browsers |
+| `libonig` / `libonigmo` | Oniguruma regex engine (full Unicode regex, used by TextMate grammars) | Sublime Text, Zed, various editors |
+
+### Cross-Platform & Additional UI Toolkits
+
+Alternative widget or windowing toolkits that run on LXQt (X11 and/or Wayland):
+
+| Library | Type | Best for | Deps size |
+|---|---|---|---|
+| `libSDL2` / `libSDL2-2.0` | Cross-platform multimedia + windowing (OpenGL/Vulkan) | Games, emulators, media players | ~5 MB |
+| `libSDL2_image` / `libSDL2_ttf` / `libSDL2_mixer` / `libSDL2_net` | SDL extensions for image loading, fonts, audio, networking | Game/SDL apps | ~2 MB each |
+| `libGLFW` (libglfw) | Lightweight OpenGL/Vulkan windowing and input | OpenGL demos, tools, prototyping (no UI widgets) | ~2 MB |
+| `libFLTK` / `libfltk` | Fast Light Toolkit — small, old-school X11/C++ widgets | Minimal GUI tools, embedded, small footprint | ~2 MB |
+| `libfox-1.6` | FOX Toolkit — cross-platform C++ widgets | Legacy scientific/engineering GUIs | ~4 MB |
+| `libIup` / `libiup` | Portable UI toolkit (C, callbacks, Tecgraf/PUC-Rio) | Scientific GUI wrappers (CD library companion) | ~2 MB |
+| `libnuklear` / `libnuklear-gl` | Single-header minimal immediate-mode GUI (no deps) | Overlays, debug UIs, game tools | < 1 MB |
+| `libraylib` | Simple OpenGL-based multimedia + GUI (C, beginner-friendly) | Games, prototyping, education | ~3 MB |
+| `libgiwx` / `widget` | GTK 3/4 widgets for Rust (via gtk-rs bindings) | Rust GTK apps (the library is indirect) | (Rust deps) |
+| `libQt5WebEngine` / `libQt6WebEngine` | Full Chromium rendering inside Qt Widgets | Rich HTML/JS UIs inside Qt apps | ~50 MB |
+| `libwebkit2gtk-4.1` / `libwebkitgtk-6.0` | WebKit rendering engine for GTK | Rich HTML/JS UIs inside GTK apps | ~40 MB |
+| `libwx_baseu-3.2` / `libwx_gtk3u_core-3.2` | wxWidgets — native-look C++ widgets (wraps GTK or Qt) | Cross-platform desktop apps with native look | ~10 MB |
+| `liblgi` / `libim` | IUP + IM + CD toolkit stack (Tecgraf) | Scientific data visualisation, CAD-like tools | ~5 MB |
+
+### Desktop Integration & Portal Widgets
+
+For apps that need system-level features (file dialogs, colour pickers, desktop portals, system trays):
+
+| Library | Role | Consumers |
+|---|---|---|
+| `libadwaita-1` | GNOME adaptive widgets (GTK 4, header bars, toast overlays, breakpoints) | Modern GNOME apps, GTK 4 apps |
+| `libhandy-1` | GNOME adaptive widgets (GTK 3 predecessor to libadwaita) | Legacy GNOME apps (GTK 3) |
+| `libdazzle-1.0` | GNOME utility widgets (spinners, docks, panels, search) | Builder, GNOME utility apps |
+| `libpanel-1` / `libpanel-6` | GTK 4 panel/dock widget (split views, terminal panels) | Builder, IDEs, developer tools |
+| `libshumate-1.0` | GTK 4 map widget (OpenStreetMap vector tiles) | GNOME Maps, navigation apps |
+| `libchamplain-0.12` | GTK 3 map widget (Clutter-based, OpenStreetMap) | Legacy GNOME Maps |
+| `libgtk-4-layer-shell` | GTK 4 integration with Wayland layer-shell protocol | GTK bars, panels, overlays on Wayland |
+| `libdbusmenu-glib` / `libdbusmenu-gtk3` | D-Bus status notifier (application indicators, Unity-style) | Legacy app indicators, tray apps |
+| `libindicator` / `libindicator3` | Legacy Ubuntu indicator protocol | App indicators (discontinued) |
+| `libappindicator` / `libappindicator3` | Application indicator library for system trays | Legacy tray icons, Discord, Slack |
+| `libnotify` | Desktop notification bubbles (freedesktop notification spec) | notify-send, various apps |
+| `libportal` / `libportal-gtk4` / `libportal-qt6` | Flatpak portal access (file chooser, screenshot, wallpaper, remote desktop, printing, OpenURI) via xdg-desktop-portal | Flatpak apps, xdg-desktop-portal backends |
+| `libflatpak` | Flatpak app management (install/remove/update sandboxed apps) | Flatpak CLI, GNOME Software, KDE Discover |
+| `libostree` | OSTree atomic update system | System updaters, Flatpak base |
+| `libpackagekit-glib2` | PackageKit D-Bus client (install/update/remove packages via PackageKit daemon) | GNOME Software, KDE Discover, pkcon |
+| `libzypp` / `libzypp-devel` | ZYpp package management backend (openSUSE) | YaST, Zypper |
+| `libalpm` | Arch Linux Package Manager (pacman) library | Pacman, pamac, octopi |
+| `libxapp` | Linux Mint XApp library (status icon, preview, sidecar) | Cinnamon/Xfce apps |
+| `libgcr-4` / `libgck-2` | GNOME Keyring/Crypto libraries — secret storage, certificate UI | Seahorse, GCR-viewer |
+| `libsecret-1` | Freedesktop Secret Service API (password management, keyring) | Gnome Keyring, KeepassXC, Seahorse |
+| `libgpgme` | GnuPG Made Easy — crypto operations (encrypt/sign/verify) | GPA, KGpg, Seahorse, git |
+| `libpwquality` | Password quality checking and generation | User management, polkit agents |
+| `libaccounts-glib` | Online accounts management (sign-on, OAuth) | GNOME Online Accounts |
+
+### Compression, Archiving & Data Serialization
+
+Used by file managers, archivers, package tools, and data-exchange apps:
+
+| Library | Format / Role | Consumers |
+|---|---|---|
+| `libarchive` (already listed) | Multi-format archive (tar, cpio, zip, 7z, iso, xar, cab, mtree) | lxqt-archiver, Ark, file-roller |
+| `libzip` | ZIP archive read/write (simple C API) | Various archivers |
+| `liblz4` | Extremely fast compression (streamable) | Systemd, kernel, databases |
+| `libzstd` | Zstandard compression (high ratio, fast, dictionary) | FFmpeg, systemd, kernel, compression utils |
+| `libbrotli` / `libbrotlidec` / `libbrotlienc` | Brotli compression (HTTP, WOFF2 fonts) | Browsers, web servers, web-font rendering |
+| `liblzma` / `liblzmadec` | XZ/LZMA compression (high ratio, slow) | Package managers, archives |
+| `libbz2` | bzip2 compression (legacy, good ratio) | Legacy archives, package tools |
+| `libz` / `libzlib` | zlib/deflate/gzip compression | Nearly universal (png, http, git, ssh, etc.) |
+| `libprotobuf` / `libprotobuf-lite` | Protocol Buffers (Google) — typed, binary serialization | Various networked apps, protobuf services |
+| `libprotobuf-c` | Protocol Buffers for C | C-based protobuf consumers |
+| `libmsgpackc` / `libmsgpack` | MessagePack — binary JSON (compressed, typed) | Various API clients, messaging |
+| `libcbor` | CBOR (RFC 7049) — compact binary representation of JSON-like data | IoT, FIDO/WebAuthn, COSE |
+| `libtoml` / `libtoml11` | TOML config file parsing (used by Cargo, many modern tools) | Rust tools, modern apps |
+| `libconfuse` | Autoconf-style config file parser (ini-like) | Various C/C++ configs |
+| `libinih` | Minimal INI file parser (single header, C) | Lightweight config file reading |
+| `libyaml` / `libyaml-cpp` | YAML parsing (Python/Ruby-style config) | Various modern apps |
+| `libucl` | Universal Config Library (nginx-like syntax, JSON superset) | Various |  
+| `libexpat` / `libexpatw` | XML stream parser (SAX, minimal, used by dbus, SVG) | D-Bus, X11 apps, librsvg |
+
+### Hardware & Peripheral Sensor APIs
+
+For apps that interact with system hardware directly:
+
+| Library | Role | Consumers |
+|---|---|---|
+| `libpci` | PCI bus enumeration and identification | lspci, hardinfo, pcimem |
+| `libusb-1.0` | USB device access (libusb) | lsusb, qFlipper, various USB tools |
+| `libhidapi` | HID interface for input devices (gamepads, drawing tablets, UPS) | Steam, game controllers, tablet tools |
+| `libgpiod` / `libgpiodcxx` | GPIO control through gpiochip character device | Embedded/IoT apps on Linux |
+| `libi2c` | I2C/SMBus device access | Sensor reading, hardware monitors |
+| `libwacom` / `libwacom2` | Wacom tablet database + configuration | GNOME Settings Wacom, KDE tablet config |
+| `libgudev-1.0` | udev device enumeration and monitoring | Blueman, system-config-printer, device managers |
+| `libevdev` | Kernel evdev device wrapper (input event handling for libinput) | libinput, Wayland input backends |
+| `libsensors` (lm-sensors) | Hardware sensor reading (CPU temp, fan speed, voltage) | lxqt-panel sensors plugin, psensor |
+| `libupower-glib` | UPower power device info (battery, AC adapter status) | lxqt-powermanagement, Xfce power manager |
+| `libayatana-appindicator` | Ayatana Indicators (community fork, maintained) | System tray, indicator apps |
+| `libqmi` / `libmbim` | Qualcomm MSM Interface / Mobile Broadband Interface Model — WWAN/modem | NetworkManager modems, ModemManager |
+| `libpcsclite` | PC/SC Smart Card framework | Smart card readers, crypto tokens |
+| `libnfc` | Near Field Communication library | NFC tools, contactless readers |
+| `libfreefare` | MIFARE card operations | NFC tag read/write |
+| `libbluez` / `libbluetooth` | BlueZ Bluetooth protocol stack | Blueman, BlueDevil, bluetoothctl |
+| `libsbc` / `libldac` / `libfdk-aac` | SBC / LDAC / FDK-AAC Bluetooth audio codecs | PulseAudio/PipeWire Bluetooth modules |
+| `libwireplumber-0.4` | WirePlumber session manager client library | PipeWire audio routing, Lua scripting |
+
+### Database & Storage Libraries
+
+For apps that store structured data locally:
+
+| Library | Database / Role | Consumers |
+|---|---|---|
+| `libsqlite3` | SQLite — embedded SQL database (single-file, zero-config) | Qt SQL, Firefox, Chromium, virtually all apps |
+| `libmdbx` | libmdbx — fast transactional key-value store (ACID, MMAP) | Various performance-critical apps |
+| `liblmdb` / `liblmdb++` | Lightning Memory-Mapped Database (ultra-fast, read-optimised) | OpenLDAP, various |
+| `libpq` | PostgreSQL C client library | psql, database GUI tools (PgAdmin) |
+| `libmysqlclient` / `libmariadb` | MySQL / MariaDB C client library | mysql CLI, various admin UIs |
+| `libsoci_*` / `libsoci-core` | SOCI — C++ database abstraction (supports SQLite, Pg, MySQL) | C++ database apps |
+| `libunqlite` | UnQLite — embedded NoSQL (key-value + JSON document store) | Embedded apps, config storage |
+| `libgd` / `libgd2` | GD graphics library (dynamic image creation: GIF, JPEG, PNG, WBMP, WEBP) | PHP, web apps, image generation |
+
+### Suggested Early App Install Set
+
+If setting up LXQt from scratch and wanting the best low-library coverage:
+
+**Essential theming & integration:**
+```
+# Arch
+pacman -S qt5ct qt6ct kvantum kvantum-qt5 kvantum-qt6 lxappearance
+# Debian/Ubuntu
+apt install qt5ct qt6ct kvantum lxappearance
+```
+
+**Wayland compatibility layer (XWayland, portals, clipboard):**
+```
+# Arch
+pacman -S xorg-xwayland xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+# Debian/Ubuntu
+apt install xwayland xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+```
+
+**Recommended base app suite by toolkit:**
+- **Qt apps to install first:** `qterminal`, `pcmanfm-qt`, `featherpad`, `lximage-qt`, `screengrab`, `lxqt-archiver`
+- **GTK apps (for tool coverage):** `pavucontrol`, `blueman`, `system-config-printer`, `lxappearance`
+- **Clipboard:** `copyq` (Qt) + `wl-clipboard` (Wayland backend)
+- **Color generation:** `pywal` or `wallust` + `oomox` (both GTK and Qt theme generation)
+- **Key library metapackages (install once):** `qt5-base qt6-base qt5-wayland qt6-wayland gtk3 gtk4 glib2 pango cairo` — these cover 90% of the shared-library needs for any app in this list.
+
+## Building Custom GUI Apps
+
+Knowing the lower-level dependency chain lets you pick the right toolkit for a custom app without pulling in unnecessary weight.
+
+### Toolkit Selection Guide
+
+| Level | Library | Deps pulled | Lines for a window | Best for |
+|---|---|---|---|---|
+| **Qt (Widgets)** | `libQt5Widgets` / `libQt6Widgets` | ~40-60 MB of libs | ~10 lines | Feature-rich LOB apps, complex widgets |
+| **Qt (QML/Quick)** | `libQt5Qml` / `libQt6Quick` | ~50-80 MB | ~8 lines | Animated/smooth UIs, mobile-style |
+| **GTK 4** | `libgtk-4` + `libglib-2.0` + `libpango` + `libcairo` | ~15-25 MB | ~12 lines | Lightweight desktop tools, GNOME-style |
+| **GTK 3** | `libgtk-3` + same chain | ~10-20 MB | ~12 lines | Legacy compatibility, simpler API |
+| **raw XCB** | `libxcb` + `libx11` | ~2 MB | ~40 lines | Minimal X11 utilities, custom WMs |
+| **raw Wayland** | `libwayland-client` + `libxkbcommon` | ~3 MB | ~60 lines | Custom compositors, minimal clients |
+| **wlroots helpers** | `libwlroots` + `libwayland-server` | ~8 MB | ~30 lines | Compositor components, layer-shell apps |
+| **cairo + xcb** | `libcairo` + `libxcb` | ~5 MB | ~35 lines | Custom rendering (graphs, viz, bars) |
+| **SDL2** | `libSDL2` | ~5 MB | ~15 lines | Cross-platform games, media players |
+
+### Minimal Build Examples
+
+**Qt6 Widgets (C++)** — a window in ~10 lines:
+
+```cpp
+#include <QApplication>
+#include <QPushButton>
+int main(int argc, char *argv[]) {
+    QApplication app(argc, argv);
+    QPushButton btn("hello lxqt");
+    btn.resize(200, 80);
+    btn.show();
+    return app.exec();
+}
+```
+```bash
+# compile
+g++ -std=c++17 $(pkg-config --cflags --libs Qt6Widgets) main.cpp -o qt-hello
+```
+
+**GTK 4 (C)** — a window in ~12 lines:
+
+```c
+#include <gtk/gtk.h>
+int main(int argc, char *argv[]) {
+    gtk_init();
+    GtkWidget *win = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(win), "hello lxqt");
+    gtk_window_set_default_size(GTK_WINDOW(win), 200, 80);
+    g_signal_connect(win, "destroy", G_CALLBACK(gtk_window_destroy), NULL);
+    gtk_widget_show(win);
+    gtk_main();
+    return 0;
+}
+```
+```bash
+gcc $(pkg-config --cflags --libs gtk4) main.c -o gtk-hello
+```
+
+**Raw XCB (C)** — zero toolkit, pure X11 protocol:
+
+```c
+#include <xcb/xcb.h>
+int main() {
+    xcb_connection_t *c = xcb_connect(NULL, NULL);
+    xcb_screen_t *s = xcb_setup_roots_iterator(xcb_get_setup(c)).data;
+    xcb_window_t w = xcb_generate_id(c);
+    xcb_create_window(c, s->root_depth, w, s->root, 0, 0, 200, 80, 0,
+                      XCB_WINDOW_CLASS_INPUT_OUTPUT, s->root_visual, 0, NULL);
+    xcb_map_window(c, w);
+    xcb_flush(c);
+    for (xcb_generic_event_t *e; (e = xcb_wait_for_event(c)); free(e)) {}
+    return 0;
+}
+```
+```bash
+gcc $(pkg-config --cflags --libs xcb) main.c -o xcb-hello
+```
+
+**Raw Wayland client (C)** — minimal wl_shm window:
+
+```c
+#include <wayland-client.h>
+int main() {
+    struct wl_display *d = wl_display_connect(NULL);
+    struct wl_registry *r = wl_display_get_registry(d);
+    wl_display_roundtrip(d);
+    // binds wl_compositor, wl_shm, creates surface + shell_surface
+    wl_display_disconnect(d);
+    return 0;
+}
+```
+```bash
+gcc $(pkg-config --cflags --libs wayland-client) main.c -o wayland-hello
+```
+
+**Cairo on XCB (C)** — custom-drawn panel/graph:
+
+```c
+#include <cairo/cairo-xcb.h>
+#include <xcb/xcb.h>
+int main() {
+    // creates xcb window, then:
+    cairo_surface_t *s = cairo_xcb_surface_create(conn, win, visual, 200, 80);
+    cairo_t *cr = cairo_create(s);
+    cairo_set_source_rgb(cr, 0.2, 0.4, 0.8);
+    cairo_rectangle(cr, 10, 10, 180, 60);
+    cairo_fill(cr);
+    cairo_destroy(cr);
+    cairo_surface_destroy(s);
+}
+```
+```bash
+gcc $(pkg-config --cflags --libs cairo xcb) main.c -o cairo-xcb-hello
+```
+
+### How to Find Library Flags on Any Distro
+
+Always use `pkg-config` — never hardcode `-I` or `-L` paths:
+
+```bash
+# list all known .pc files
+pkg-config --list-all | grep -E '^(Qt5|Qt6|gtk|glib|wayland|xcb|cairo)'
+
+# get compiler + linker flags for any library
+pkg-config --cflags --libs Qt6Widgets
+pkg-config --cflags --libs gtk4
+pkg-config --cflags --libs xcb
+pkg-config --cflags --libs wayland-client
+pkg-config --cflags --libs cairo xcb
+```
+
+For CMake-based projects:
+
+```cmake
+# CMakeLists.txt
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+# or
+find_package(PkgConfig)
+pkg_check_modules(GTK4 REQUIRED gtk4)
+```
+
+### Why This Knowledge Helps
+
+1. **Minimal deps** — Need a simple volume OSD? Use raw Wayland layer-shell (one dep of ~3 MB) instead of pulling in the entire Qt Widgets stack (~60 MB).
+2. **Custom panel widgets** — `lxqt-panel`'s CPU/memory graphs use QSS for styling; you could write a dedicated Cairo-based overlay that renders custom graphs with < 2 MB of deps.
+3. **Compositor plugins** — Hyprland and Wayfire support plugin systems. A custom blur/effect plugin links only `libwayland-server` + `libwlroots`, not a full toolkit.
+4. **Tray/indicator** — A minimal system indicator (battery, network) can be a 50-line XCB window with Cairo drawing — no toolkit required.
+5. **Screen locker** — A custom locker for wlroots compositors needs only `libwayland-client` + `ext-session-lock` protocol, keeping the attack surface small.
+6. **Resource-constrained systems** — Embed a Qt app on a Raspberry Pi? Drop `Qt5WebEngine` (~50 MB) and use `libsoup` + `webkit2gtk` (~10 MB) or raw `libcurl` + Cairo instead.
 
 ## Distributions
 

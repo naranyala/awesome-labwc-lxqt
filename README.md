@@ -31,6 +31,7 @@
 - [Notification Daemons](#notification-daemons)
 - [Application Launchers](#application-launchers)
 - [Alternative Panels & Bars](#alternative-panels--bars)
+- [Dock Panels](#dock-panels)
 - [Wallpapers & Backgrounds](#wallpapers--backgrounds)
 - [Color Management & Dynamic Theming](#color-management--dynamic-theming)
 - [XDG Desktop Portal](#xdg-desktop-portal)
@@ -401,6 +402,40 @@ For those who prefer a scriptable or minimalist bar over `lxqt-panel`:
 - **[i3blocks](https://github.com/vivien/i3blocks)** - A flexible status bar for i3/Sway using shell scripts.
 - **[aggbar](https://github.com/atx/aggbar)** - A minimal, multi-threaded status bar for Wayland (wlroots).
 - **[nwg-panel](https://github.com/nwg-piotr/nwg-panel)** - A GTK3 panel for Sway with system tray, taskbar, and clock.
+
+## Dock Panels
+
+macOS-style application docks for Linux. These show running and pinned applications with icons, often with magnification and animation effects.
+
+### X11 Docks
+
+- **[Plank](https://github.com/ricotz/plank)** - The simplest dock on the planet. Lightweight, fast, and minimal. Used by elementary OS. Vala/GTK3.
+- **[Plank Reloaded](https://github.com/zquestz/plank-reloaded)** - Actively maintained fork of Plank with modern docklets, GTK theme support, multi-monitor, and floating dock. X11 only. Vala/GTK3.
+- **[Cairo-Dock](https://glx-dock.org/)** - Feature-rich dock with OpenGL/Cairo rendering, animations, applets, and themes. Highly customizable. C/GTK3.
+- **[DockbarX](https://github.com/M7S/dockbarx)** - Lightweight taskbar/dock with Windows-style grouped window buttons. Works as standalone dock (DockX), XFCE panel applet, or MATE panel applet. Python/GTK3.
+- **[Docky](https://launchpad.net/docky)** - GNOME Do's dock interface. Feature-rich with docklets (CPU monitor, weather, etc.). Vala/GTK3.
+- **[Latte Dock](https://invent.kde.org/plasma/latte-dock)** - KDE's feature-rich dock with panels, layouts, and KDE Plasma integration. Discontinued but still functional. C++/Qt.
+- **[KSmoothDock](https://github.com/dangrin/ksmoothdock)** - Smooth animated dock for KDE with KDE Plasma integration. C++/Qt.
+- **[Polydock](https://github.com/folke/polydock)** - Fast, hackable application dock for tiling WMs (bspwm, i3, xmonad). GTK CSS themeable. TypeScript/GJS.
+- **[Winbar](https://github.com/jmanc3/winbar)** - Familiar X11 panel/dock to ease new Linux users' transition. C++.
+- **[Crystal Dock](https://github.com/dangvd/crystal-dock)** - Cool dock with smooth parabolic zooming, translucent effects, and four visual styles (Glass 3D, Glass 2D, Flat 2D, Metal 2D). Supports KDE, LXQt, Cinnamon, MATE on X11 (v1). C++/Qt6.
+- **[nwg-panel](https://github.com/nwg-piotr/nwg-panel)** - GTK3 panel for Sway with taskbar, system tray, and clock. Can function as a dock. Python/GTK3.
+
+### Wayland Docks
+
+- **[Docklike Taskbar](https://gitlab.com/laborius/docklike-taskbar)** - Wayland-native taskbar/dock for wlroots compositors (Sway, Hyprland, Labwc). Supports window grouping. C++/GTK4.
+- **[Crystal Dock](https://github.com/dangvd/crystal-dock)** - Cool dock with smooth parabolic zooming, translucent effects, and four visual styles. v2 supports Hyprland, KDE Plasma 6, Labwc, LXQt, Niri, Sway, and Wayfire on Wayland. C++/Qt6.
+- **[Rego](https://git.sr.ht/~stacks/rego)** - Simple, minimal dock for Sway. Wayland-native. Rust.
+- **[ags dock](https://github.com/Aylur/ags)** - Part of Aylur's GTK Shell (ags). Create dock-like widgets using GTK4 and JavaScript.
+- **[eww dock](https://github.com/elkowar/eww)** - Build dock-like widgets using eww's XML/YAML widget system. Works on X11 and Wayland.
+- **[nwg-dock-hyprland](https://github.com/nwg-piotr/nwg-dock-hyprland)** - A dock for Hyprland based on nwg-panel's dock component. Python/GTK3.
+- **[eqsh](https://github.com/eq-desktop/eqsh)** - Polished all-in-one Hyprland shell with dock, notifications, and system tray. QML.
+
+### Dock Libraries
+
+- **[libwnck](https://wiki.gnome.org/Projects/Libwnck)** - Window Navigation Construction Kit. Library for building taskbars, pagers, and window lists. X11. GTK3 version: `libwnck-3`.
+- **[libbamf](https://launchpad.net/bamf)** - BAMF Application Matching Framework. Matches windows to desktop files and groups windows by application. Used by Unity, Plank, DockbarX. GTK3 version: `libbamf3`.
+- **[libwnck-3](https://wiki.gnome.org/Projects/Libwnck)** - GTK3 version of libwnck. Required by Plank, Polydock, and most GTK3-based docks.
 
 ## Wallpapers & Backgrounds
 
@@ -854,6 +889,8 @@ For apps that need system-level features (file dialogs, colour pickers, desktop 
 | `libhandy-1` | GNOME adaptive widgets (GTK 3 predecessor to libadwaita) | Legacy GNOME apps (GTK 3) |
 | `libdazzle-1.0` | GNOME utility widgets (spinners, docks, panels, search) | Builder, GNOME utility apps |
 | `libpanel-1` / `libpanel-6` | GTK 4 panel/dock widget (split views, terminal panels) | Builder, IDEs, developer tools |
+| `libwnck-3` | Window Navigation Construction Kit (taskbars, pagers, window lists) | Plank, Polydock, DockbarX, nwg-panel |
+| `libbamf3` | BAMF Application Matching Framework (window-to-app matching, grouping) | Plank, DockbarX, Unity launcher |
 | `libshumate-1.0` | GTK 4 map widget (OpenStreetMap vector tiles) | GNOME Maps, navigation apps |
 | `libchamplain-0.12` | GTK 3 map widget (Clutter-based, OpenStreetMap) | Legacy GNOME Maps |
 | `libgtk-4-layer-shell` | GTK 4 integration with Wayland layer-shell protocol | GTK bars, panels, overlays on Wayland |
